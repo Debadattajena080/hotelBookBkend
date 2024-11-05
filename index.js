@@ -1,6 +1,5 @@
 import "dotenv/config";
 import express from "express";
-import mongoose from "mongoose";
 import cors from "cors";
 import multer from "multer";
 import Hotel from "./models/Hotel.Model.js";
