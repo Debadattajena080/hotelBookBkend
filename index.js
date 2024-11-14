@@ -30,11 +30,10 @@ app.get("/", (req, res) => {
 
 app.post(
   "/api/add-hotel",
-  upload.array("uploadImages", 10),
+  upload.array("uploadImages", 6),
   async (req, res) => {
     try {
-      const { hotelname, description, address, city, email, phone } =
-        req.body;
+      const { hotelname, description, address, city, email, phone } = req.body;
 
       const imagePaths = req.files.map((file) => file.path);
       const newHotel = new Hotel({
@@ -84,33 +83,47 @@ app.get("/api/hotels/:hotelId", async (req, res) => {
 
 //POST
 
-app.post("/api/hotels/:hotelId/add-rooms", async (req, res) => {
-  try {
-    const hotelId = req.params.hotelId;
-    const { roomType, totalRoom, capacity, price, amenities } = req.body; // Room details
+app.post(
+  "/api/hotels/:hotelId/add-rooms",
+  upload.array("uploadImages", 6),
+  async (req, res) => {
+    try {
+      const hotelId = req.params.hotelId;
+      const {
+        roomType,
+        totalRoom,
+        capacity,
+        price,
+        amenities,
+        roomDescriptions,
+      } = req.body; // Room details
 
-    //check if hotel exists with the same id
-    const hotel = await Hotel.findById(req.params.hotelId);
-    if (!hotel) {
-      return res.status(404).json({ message: "Hotel not found" });
+      //check if hotel exists with the same id
+      const hotel = await Hotel.findById(req.params.hotelId);
+      if (!hotel) {
+        return res.status(404).json({ message: "Hotel not found" });
+      }
+
+      const imagePaths = req.files.map((file) => file.path);
+      const newRoom = new Room({
+        roomType,
+        roomDescriptions,
+        totalRoom,
+        capacity,
+        price,
+        amenities,
+        hotel: hotelId,
+        roomimages: imagePaths,
+      });
+
+      const savedRoom = await newRoom.save();
+      res.status(201).json(savedRoom);
+    } catch (err) {
+      console.log(err);
+      res.status(500).send("Server Error, room not saved!");
     }
-
-    const newRoom = new Room({
-      roomType,
-      totalRoom,
-      capacity,
-      price,
-      amenities,
-      hotel: hotelId,
-    });
-
-    const savedRoom = await newRoom.save();
-    res.status(201).json(savedRoom);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Server Error, room not saved!");
   }
-});
+);
 
 //GET
 
