@@ -4,6 +4,8 @@ import cors from "cors";
 import multer from "multer";
 import Hotel from "./models/Hotel.Model.js";
 import Room from "./models/Room.Model.js";
+import Booking from "./models/Booking.Model.js";
+
 import mongoDBConnection from "./db/connectDB.js";
 
 const app = express();
@@ -144,6 +146,66 @@ app.get("/api/hotels/:hotelId/rooms", async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).send("Server Error, rooms not found!");
+  }
+});
+
+//BOOKING APIIISSS
+
+app.post("/api/hotels/:hotelId/room/:roomId/book-room", async (req, res) => {
+  const hotelId = req.params.hotelId;
+  const roomId = req.params.roomId;
+  try {
+    const {
+      firstName,
+      lastName,
+      guests,
+      rooms,
+      checkIn,
+      checkOut,
+      contactEmail,
+      contactPhone,
+    } = req.body;
+
+    const hotel = await Hotel.findById(hotelId);
+    const room = await Room.findById(roomId);
+
+    console.log(hotel, room);
+
+    if (!hotel || !room) {
+      return res.status(404).json({ message: "Hotel or Room not found" });
+    }
+
+    const newBooking = new Booking({
+      firstName,
+      lastName,
+      guests,
+      rooms,
+      checkIn,
+      checkOut,
+      contactEmail,
+      contactPhone,
+      hotelId: hotel?._id,
+      roomId: room?._id,
+    });
+
+    const savedBooking = await newBooking.save();
+    res.status(201).json(savedBooking);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error: Unable to create booking");
+  }
+});
+
+// get all bookings
+
+app.get("/all-bookings", async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .populate("hotelId")
+      .populate("roomId");
+    res.json(bookings);
+  } catch (error) {
+    res.status(404).send(error);
   }
 });
 
