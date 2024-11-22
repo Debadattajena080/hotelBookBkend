@@ -198,7 +198,7 @@ app.post("/api/hotels/:hotelId/room/:roomId/book-room", async (req, res) => {
 
 // get all bookings
 
-app.get("/all-bookings", async (req, res) => {
+app.get("/api/all-bookings", async (req, res) => {
   try {
     const bookings = await Booking.find()
       .populate("hotelId")
