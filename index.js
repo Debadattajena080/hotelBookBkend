@@ -149,6 +149,36 @@ app.get("/api/hotels/:hotelId/rooms", async (req, res) => {
   }
 });
 
+//Get rooms by id of a hotel
+
+app.get("/api/hotels/:hotelId/room/:roomId", async (req, res) => {
+  const { hotelId, roomId } = req.params;
+
+  try {
+    // Find the room by ID and ensure it belongs to the hotel
+    const room = await Room.findOne({ _id: roomId, hotel: hotelId });
+    if (!room) {
+      return res.status(404).json({
+        message: "Room not found or does not belong to the specified hotel",
+      });
+    }
+
+    // Optionally fetch the hotel details if needed
+    const hotel = await Hotel.findById(hotelId);
+    if (!hotel) {
+      return res.status(404).json({ message: "Hotel not found" });
+    }
+
+    // Respond with room and hotel details
+    res.status(200).json(room);
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "An error occurred", error: error.message });
+  }
+});
+
 //BOOKING APIIISSS
 
 app.post("/api/hotels/:hotelId/room/:roomId/book-room", async (req, res) => {
@@ -206,6 +236,44 @@ app.get("/api/all-bookings", async (req, res) => {
     res.json(bookings);
   } catch (error) {
     res.status(404).send(error);
+  }
+});
+
+// search functionalities
+
+app.post("/api/search_hotels", async (req, res) => {
+  const { destination } = req.body;
+
+  try {
+    const resultHotels = await Hotel.find({
+      city: { $regex: destination, $options: "i" },
+    });
+
+    if (resultHotels.length === 0) {
+      return res.status(404).json({ message: "No hotels found" });
+    }
+
+    res.status(200).json({ hotels: resultHotels });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching hotels" });
+  }
+});
+
+app.get("/api/search_hotels", async (req, res) => {
+  const { destination } = req.query;
+
+  try {
+    const resultHotels = await Hotel.find({
+      city: { $regex: destination, $options: "i" },
+    });
+
+    if (resultHotels.length === 0) {
+      return res.status(404).json({ message: "No hotels found" });
+    }
+    res.status(200).json(resultHotels);
+  } catch (err) {
+    console.error(err);
   }
 });
 
