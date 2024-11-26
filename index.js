@@ -100,6 +100,9 @@ app.post(
         roomDescriptions,
       } = req.body; // Room details
 
+      console.log(totalRoom);
+      
+
       //check if hotel exists with the same id
       const hotel = await Hotel.findById(req.params.hotelId);
       if (!hotel) {
@@ -233,11 +236,32 @@ app.get("/api/all-bookings", async (req, res) => {
     const bookings = await Booking.find()
       .populate("hotelId")
       .populate("roomId");
-    res.json(bookings);
+    res.status(200).json(bookings);
   } catch (error) {
     res.status(404).send(error);
   }
 });
+
+app.put("/api/update-booking-status/:id", async (req, res) => {
+  const { status } = req.body;
+  const { id } = req.params;
+
+  console.log("status", status);
+  console.log("id", id);
+
+  try {
+    const booking = await Booking.findByIdAndUpdate(
+      id,
+      { status: status },
+      { new: true } // return updated booking
+    );
+    res.status(200).json(booking);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating booking status" });
+  }
+});
+
+
 
 // search functionalities
 

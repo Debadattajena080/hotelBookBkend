@@ -2,10 +2,9 @@ import mongoose from "mongoose";
 
 const roomSchema = new mongoose.Schema(
   {
-
     roomDescriptions: {
       type: String,
-      required: true
+      required: true,
     },
     roomType: {
       type: String,
@@ -30,7 +29,6 @@ const roomSchema = new mongoose.Schema(
     },
 
     amenities: [{ type: String }],
-
     roomimages: [{ type: String }],
 
     hotel: {
@@ -38,11 +36,22 @@ const roomSchema = new mongoose.Schema(
       ref: "Hotel",
       required: true,
     },
+
+    remainingRoom: {
+      type: Number,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+roomSchema.pre("save", function (next) {
+  if (this.isNew) {
+    this.remainingRoom = this.totalRoom; // Set remainingRoom to totalRoom when creating a new room
+  }
+  next();
+});
 
 const Room = mongoose.model("Room", roomSchema);
 export default Room;
