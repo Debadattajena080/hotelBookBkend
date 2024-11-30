@@ -2,9 +2,12 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import Hotel from "./models/Hotel.Model.js";
 import Room from "./models/Room.Model.js";
 import Booking from "./models/Booking.Model.js";
+import User from "./models/User.Model.js";
 
 import mongoDBConnection from "./db/connectDB.js";
 
@@ -26,8 +29,86 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-app.get("/", (req, res) => {
-  res.send("Hello World");
+//Authentication Apii (login, signup)
+
+app.post("/api/signup", async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, password } = req.body;
+
+    // Validate input
+    if (!firstName || !lastName || !email || !phone || !password) {
+      return res.status(400).json({ message: "Please fill all the fields" });
+    }
+
+    // Check if the user already exists
+    const userExist = await User.findOne({
+      $or: [{ email: email }, { phone: phone }],
+    });
+
+    if (userExist) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create a new user
+    const newUser = new User({
+      firstName,
+      lastName,
+      email,
+      phone,
+      password: hashedPassword,
+    });
+
+    // Save the user to the database
+    const savedUser = await newUser.save();
+
+    // Generate a JWT token
+    const token = jwt.sign(
+      { id: savedUser._id, email: savedUser.email, role: savedUser.role, phone: savedUser.phone },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" } // Default to 1 day if not set
+    );
+
+    // Respond with token and user data/
+    res.status(201).json({
+      message: "User registered successfully",
+      token,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Please fill all the fields" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role, phone: user.phone },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+    );
+
+    res.status(200).json({ token });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 app.post(
@@ -101,7 +182,6 @@ app.post(
       } = req.body; // Room details
 
       console.log(totalRoom);
-      
 
       //check if hotel exists with the same id
       const hotel = await Hotel.findById(req.params.hotelId);
@@ -260,8 +340,6 @@ app.put("/api/update-booking-status/:id", async (req, res) => {
     res.status(500).json({ message: "Error updating booking status" });
   }
 });
-
-
 
 // search functionalities
 
