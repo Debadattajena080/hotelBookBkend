@@ -172,7 +172,6 @@ app.get("/api/user/:userId/myproperties", async (req, res) => {
 
 app.get("/api/hotels/:hotelId", async (req, res) => {
   try {
-    console.log("Params", req.params.hotelId);
     const hotel = await Hotel.findById(req.params.hotelId);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not exist" });
@@ -189,11 +188,12 @@ app.get("/api/hotels/:hotelId", async (req, res) => {
 //POST
 
 app.post(
-  "/api/hotels/:hotelId/add-rooms",
+  "/api/user/:userId/hotel/:hotelId/add-rooms",
   upload.array("uploadImages", 6),
   async (req, res) => {
     try {
-      const hotelId = req.params.hotelId;
+      const { userId, hotelId } = req.params;
+
       const {
         roomType,
         totalRoom,
@@ -201,14 +201,18 @@ app.post(
         price,
         amenities,
         roomDescriptions,
-      } = req.body; // Room details
+      } = req.body;
 
-      console.log(totalRoom);
+      // console.log(totalRoom);
 
-      //check if hotel exists with the same id
-      const hotel = await Hotel.findById(req.params.hotelId);
+      const hotel = await Hotel.findById(hotelId);
       if (!hotel) {
         return res.status(404).json({ message: "Hotel not found" });
+      }
+      if (hotel.owner.toString() !== userId) {
+        return res
+          .status(403)
+          .json({ message: "Access denied. Not the owner of this hotel." });
       }
 
       const imagePaths = req.files.map((file) => file.path);
@@ -237,15 +241,11 @@ app.post(
 app.get("/api/hotels/:hotelId/rooms", async (req, res) => {
   try {
     const hotelId = req.params.hotelId;
-    console.log(req.params.hotelId);
-
     const hotel = await Hotel.findById(hotelId);
-    console.log("Hotel: ", hotel);
     if (!hotel) {
       return res.status(404).json({ message: "Hotel not foundssss" });
     }
     const rooms = await Room.find({ hotel: hotelId });
-    console.log("Rooms: ", rooms);
 
     res.json(rooms);
   } catch (err) {
@@ -276,6 +276,8 @@ app.get("/api/hotels/:hotelId/room/:roomId", async (req, res) => {
 
     // Respond with room and hotel details
     res.status(200).json(room);
+
+    console.log("rooom", room);
   } catch (error) {
     console.error(error);
     res
@@ -304,8 +306,6 @@ app.post("/api/hotels/:hotelId/room/:roomId/book-room", async (req, res) => {
     const hotel = await Hotel.findById(hotelId);
     const room = await Room.findById(roomId);
 
-    console.log(hotel, room);
-
     if (!hotel || !room) {
       return res.status(404).json({ message: "Hotel or Room not found" });
     }
@@ -333,11 +333,16 @@ app.post("/api/hotels/:hotelId/room/:roomId/book-room", async (req, res) => {
 
 // get all bookings
 
-app.get("/api/all-bookings", async (req, res) => {
+app.get("/api/user/:userId/all-bookings", async (req, res) => {
+  const { userId } = req.params;
   try {
-    const bookings = await Booking.find()
-      .populate("hotelId")
-      .populate("roomId");
+    const ownedHotels = await Hotel.find({ owner: userId });
+    const hotelIds = ownedHotels.map((hotel) => hotel._id);
+
+    const bookings = await Booking.find({ hotelId: { $in: hotelIds } })
+      .populate("hotelId") // Populate hotel details (e.g., name)
+      .populate("roomId"); // Populate room details (e.g., room type)
+
     res.status(200).json(bookings);
   } catch (error) {
     res.status(404).send(error);
@@ -347,10 +352,6 @@ app.get("/api/all-bookings", async (req, res) => {
 app.put("/api/update-booking-status/:id", async (req, res) => {
   const { status } = req.body;
   const { id } = req.params;
-
-  console.log("status", status);
-  console.log("id", id);
-
   try {
     const booking = await Booking.findByIdAndUpdate(
       id,
@@ -401,6 +402,27 @@ app.get("/api/search_hotels", async (req, res) => {
   }
 });
 
+//Booked room details
+
+// app.get("/api/hotel/:hotelId/details", async (req, res) => {
+//   const { hotelId } = req.params;
+//   console.log("hotelssss", hotelId);
+//   try {
+//     const hotel = await Hotel.findById(hotelId).populate("");
+//     console.log("hotels", hotel);
+//     const roomDetails = hotel.rooms.map((room) => ({
+//       roomType: room.roomType,
+//       totalRooms: room.totalRooms,
+//       remainingRoom: room.remainingRoom,
+//     }));
+//     res.status(200).json({
+//       // hotelname: hotel.name,
+//       roomDetails,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: "Unable to fetch hotel details" });
+//   }
+// });
 app.listen(process.env.PORT, () => {
   console.log(`Server is running on port ${process.env.PORT}`);
 });
