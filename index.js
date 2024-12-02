@@ -31,7 +31,7 @@ const upload = multer({ storage });
 
 //Authentication Apii (login, signup)
 
-app.post("/api/signup", async (req, res) => {
+app.post("/api/user/signup", async (req, res) => {
   try {
     const { firstName, lastName, email, phone, password } = req.body;
 
@@ -66,7 +66,12 @@ app.post("/api/signup", async (req, res) => {
 
     // Generate a JWT token
     const token = jwt.sign(
-      { id: savedUser._id, email: savedUser.email, role: savedUser.role, phone: savedUser.phone },
+      {
+        id: savedUser._id,
+        email: savedUser.email,
+        role: savedUser.role,
+        phone: savedUser.phone,
+      },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || "1d" } // Default to 1 day if not set
     );
@@ -82,7 +87,7 @@ app.post("/api/signup", async (req, res) => {
   }
 });
 
-app.post("/api/login", async (req, res) => {
+app.post("/api/user/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -112,10 +117,14 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.post(
-  "/api/add-hotel",
+  "/api/user/:userId/add-hotel",
   upload.array("uploadImages", 6),
   async (req, res) => {
     try {
+      const userId = req.params.userId;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
       const { hotelname, description, address, city, email, phone } = req.body;
 
       const imagePaths = req.files.map((file) => file.path);
@@ -126,6 +135,7 @@ app.post(
         address,
         email,
         phone,
+        owner: userId,
         images: imagePaths,
       });
 
@@ -138,9 +148,21 @@ app.post(
   }
 );
 
-app.get("/api/hotels", async (req, res) => {
+app.get("/api/allhotels", async (req, res) => {
   try {
-    const hotels = await Hotel.find(); // Fetch all hotels
+    const hotels = await Hotel.find();
+    res.json(hotels);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
+});
+
+app.get("/api/user/:userId/myproperties", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const hotels = await Hotel.find({ owner: userId });
+    // const hotels = await Hotel.find(); // Fetch all hotels
     res.json(hotels);
   } catch (error) {
     console.error(error);

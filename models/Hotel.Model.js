@@ -8,6 +8,11 @@ const hotelSchema = new mongoose.Schema(
     city: { type: String, required: true },
     email: { type: String, required: true },
     phone: { type: String, required: true },
+    owner: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     images: [{ type: String }], // Array to hold image paths
   },
   {
